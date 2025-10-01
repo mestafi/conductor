@@ -62,17 +62,20 @@ jobs:
           if [[ $ENV == 'prd' && $BRANCH == 'production' ]]
           then
             echo "AWS_ROLE=PRD_AWS_ROLE" >> $GITHUB_OUTPUT
-            echo "PROJECT_PREFIX=mesta-prd-mb" >> $GITHUB_OUTPUT
+            echo "PROJECT_PREFIX=mesta-prd-nv" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_BUCKET=mesta-prd-nv-environment" >> $GITHUB_OUTPUT
             echo "SLACK_WEBHOOK_URL=PRD_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT     
           elif [ $ENV == 'stg' ]
           then
             echo "AWS_ROLE=STG_AWS_ROLE" >> $GITHUB_OUTPUT
-            echo "PROJECT_PREFIX=mesta-stg-mb" >> $GITHUB_OUTPUT
+            echo "PROJECT_PREFIX=mesta-stg-nv" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_BUCKET=mesta-non-prod-nv-environment" >> $GITHUB_OUTPUT
             echo "SLACK_WEBHOOK_URL=DEV_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT
           elif [ $ENV == 'dev' ]
           then
             echo "AWS_ROLE=DEV_AWS_ROLE" >> $GITHUB_OUTPUT
-            echo "PROJECT_PREFIX=mesta-dev-mb" >> $GITHUB_OUTPUT
+            echo "PROJECT_PREFIX=mesta-dev-nv" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_BUCKET=mesta-non-prod-nv-environment" >> $GITHUB_OUTPUT
             echo "SLACK_WEBHOOK_URL=DEV_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT
           else
             echo "Branch not configured!"
@@ -86,7 +89,6 @@ jobs:
         run: |
           PROJECT_PREFIX=${{ steps.vars.outputs.PROJECT_PREFIX }}
           echo "ECR_REPOSITORY=$PROJECT_PREFIX-$SERVICE_NAME"  >> $GITHUB_OUTPUT
-          echo "ENVIRONMENT_BUCKET=$PROJECT_PREFIX-environment"  >> $GITHUB_OUTPUT
           echo ":seedling: Branch:${GITHUB_REF#refs/heads/}" >> $GITHUB_STEP_SUMMARY
 
   # Building and Pushing Conductor Server Image to ECR
@@ -125,7 +127,7 @@ jobs:
 
       - name: Download S3 file
         run: |
-          aws s3 cp s3://${PROJECT_PREFIX}-s3-environment/conductor-server/conductor-server.properties ./docker/server/config/conductor-server.properties
+          aws s3 cp s3://${{ env.ENVIRONMENT_BUCKET }}/conductor-server/${{ env.ENV }}/conductor-server.properties ./docker/server/config/conductor-server.properties
 
       - name: Amazon ECR Login
         id: login-ecr
@@ -138,7 +140,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         with:
           context: .
-          file: ./Dockerfile
+          file: ./docker/server/Dockerfile
           push: true
           provenance: false
           platforms: linux/amd64
