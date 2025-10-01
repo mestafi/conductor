@@ -30,7 +30,7 @@ jobs:
       ENV: ${{ steps.vars.outputs.ENV }}
       PROJECT_PREFIX: ${{ steps.vars.outputs.PROJECT_PREFIX }}
       ECR_REPOSITORY: ${{ steps.set_env.outputs.ECR_REPOSITORY }}
-      ENVIRONMENT_BUCKET: ${{ steps.set_env.outputs.ENVIRONMENT_BUCKET }}
+      ENVIRONMENT_BUCKET: ${{ steps.vars.outputs.ENVIRONMENT_BUCKET }}
       SLACK_WEBHOOK_URL: ${{ steps.vars.outputs.SLACK_WEBHOOK_URL }}
 
     steps:
