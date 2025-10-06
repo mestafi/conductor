@@ -4,76 +4,114 @@
 "type" : "EVENT"
 ```
 
-The `EVENT` task is a task used to publish an event into one of the supported eventing systems in Conductor.
+The Event task (`EVENT`) is used to publish events to supported eventing systems. It enables event-based dependencies within workflows and tasks, making it possible to trigger external systems as part of the workflow execution.
 
-## Use Cases 
-Consider a use case where at some point in the execution, an event is published to an external eventing system such as SQS.
-Event tasks are useful for creating event based dependencies for workflows and tasks.
+The following queuing systems are supported:
 
-## Supported Queuing Systems
-Conductor supports the the following eventing models:
-
-1. Conductor internal events (prefix: `conductor`)
-2. SQS (prefix: `sqs`)
-3. NATS (prefix: `nats`)
-4. AMQP (prefix: `amqp_queue or amqp_exchange`)
+- Conductor internal queue
+- AMQP
+- Kafka
+- NATS
+- NATS Streaming
+- SQS
 
 
-## Configuration
-The following parameters are specified at the top level of the task configuration.
+## Task parameters
 
-| Attribute     | Description                                                                                                                                                                 |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| sink          | External event queue in the format of `prefix:location`.  Prefix is either `sqs` or `conductor` and `location` specifies the actual queue name. e.g. `sqs:send_email_queue` |
-| asyncComplete | Boolean. [See below](#asynccomplete)                                                                                                                                        |
+Use these parameters in top level of the Event task configuration.
 
-### asyncComplete
-* ```false``` to mark status COMPLETED upon execution 
-* ```true``` to keep it IN_PROGRESS, wait for an external event (via Conductor or SQS or EventHandler) to complete it. 
-
-### Conductor sink
-When producing an event with Conductor as sink, the event name follows the structure:
-```conductor:<workflow_name>:<task_reference_name>```
-
-When using Conductor as sink, you have two options: defining the sink as `conductor` in which case the queue name will default to the taskReferenceName of the Event Task, or specifying the queue name in the sink, as `conductor:<queue_name>`. The queue name is in the `event` value of the event Handler, as `conductor:<workflow_name>:<queue_name>`.
-
-### SQS sink
-For SQS, use the **name** of the queue and NOT the URI.  Conductor looks up the URI based on the name.
-
-## Output
-Tasks's output are sent as a payload to the external event. In case of SQS the task's output is sent to the SQS message a a payload.
+| Parameter          | Type                | Description                                       | Required / Optional  |
+| ------------------ | ------------------- | ------------------------------------------------- | -------------------- |
+| sink               | String              | The target event queue in the format `prefix:location`, where the prefix denotes the queuing system, and the location represents the specific queue name (e.g., `send_email_queue`). Supported prefixes: <ul><li>`conductor`</li> <li>`ampq`, `amqp_queue`, or `amqp_exchange`</li> <li>`kafka`</li> <li>`nats`</li> <li>`nats-stream`</li> <li>`sqs`</li></ul> <br/> **Note:** For all queuing systems except the Conductor queue, you should use the queue's name, not the URI in `location`. The URI will be looked up based on the queue name. Refer to [Conductor sink configuration](#conductor-sink-configuration) for more details on how to use the Conductor queue.         | Required. |
+| inputParameters   | Map[String, Any].    | Any other input parameters for the Event task, which will be published to the queuing system.  | Optional. |
+| asyncComplete     | Boolean              | Whether the task is completed asynchronously. The default value is false. <ul><li>**false**—Task status is set to COMPLETED upon successful execution.</li> <li>**true**—Task status is kept as IN_PROGRESS until an external event marks it as complete.</li></ul> | Optional. |
 
 
-| name               | type    | description                           |
-| ------------------ | ------- | ------------------------------------- |
-| workflowInstanceId | String  | Workflow id                           |
-| workflowType       | String  | Workflow Name                         |
-| workflowVersion    | Integer | Workflow Version                      |
-| correlationId      | String  | Workflow CorrelationId                |
-| sink               | String  | Copy of the input data "sink"         |
-| asyncComplete      | Boolean | Copy of the input data "asyncComplete |
-| event_produced     | String  | Name of the event produced            |
+### Conductor sink configuration
 
-The published event's payload is identical to the output of the task (except "event_produced").
+When using Conductor as sink, you have two options to set the sink: 
+* `conductor` 
+* `conductor:<workflow_name>:<queue_name>` (same as the `event` value of the event handler)
 
+If the workflow name and queue name is omitted, it will default to the Event task's workflow name and its own `taskReferenceName` for the queue name.
 
-## Examples
+## Configuration JSON
 
-Consider an example where we want to publish an event into SQS to notify an external system. 
+Here is the task configuration for an Event task.
 
 ```json
 {
-    "type": "EVENT",
-    "sink": "sqs:sqs_queue_name",
-    "asyncComplete": false
+  "name": "event",
+  "taskReferenceName": "event_ref",
+  "type": "EVENT",
+  "inputParameters": {},
+  "sink": "sqs:sqs_queue_name",
+  "asyncComplete": false
 }
 ```
 
-An example where we want to publish a messase to conductor's internal queuing system.
-```json
+## Output
+
+The Event task will return the following parameters.
+
+| Name             | Type         | Description                                                   |
+| ---------------- | ------------ | ------------------------------------------------------------- |
+| event_produced     | String  | The name of the event produced. When producing an event with Conductor as a sink, the event name will be formatted as
+`conductor:<workflow_name>:<task_reference_name>`.           |
+| workflowInstanceId | String  | The workflow execution ID.                 |
+| workflowType       | String  | The workflow name.                         |
+| workflowVersion    | Integer | The workflow version.                      |
+| correlationId      | String  | The workflow correlation ID.               |
+| sink               | String  | The `sink` value.                          |
+| asyncComplete      | Boolean | The `asyncComplete` value.                 |
+| taskToDomain       | Map[String, String] | The Event task's domain mapping, if any. |
+
+
+The published event's payload is identical to the task output, minus `event_produced`.
+
+## Examples
+
+In this example, the Event task sends a message to the Conductor queue.
+
+``` json
 {
-    "type": "EVENT",
-    "sink": "conductor:internal_event_name",
+  "name": "event_task",
+  "taskReferenceName": "event_0",
+  "inputParameters": {
+    "mod": "${workflow.input.mod}",
+    "oddEven": "${workflow.input.oddEven}",
+    "sink": "conductor",
     "asyncComplete": false
+  },
+  "type": "EVENT",
+  "decisionCases": {},
+  "defaultCase": [],
+  "forkTasks": [],
+  "startDelay": 0,
+  "joinOn": [],
+  "sink": "conductor",
+  "optional": false,
+  "defaultExclusiveJoinTask": [],
+  "asyncComplete": false,
+  "loopOver": [],
+  "onStateChange": {},
+  "permissive": false
+}
+```
+
+Here is the Event task output upon execution:
+
+``` json
+{
+  "event_produced": "conductor:test workflow:event_0",
+  "mod": "2",
+  "oddEven": "5",
+  "asyncComplete": false,
+  "sink": "conductor",
+  "workflowType": "test workflow",
+  "correlationId": null,
+  "taskToDomain": {},
+  "workflowVersion": 1,
+  "workflowInstanceId": "b7c1e6d9-4a80-48b6-b901-487afef9d7c1"
 }
 ```
