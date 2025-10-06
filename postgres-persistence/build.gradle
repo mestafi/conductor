@@ -13,18 +13,18 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-core"
 
     implementation "org.apache.commons:commons-lang3"
-    implementation "org.postgresql:postgresql:42.3.8"
+    implementation "org.postgresql:postgresql:${revPostgres}"
     implementation "org.springframework.boot:spring-boot-starter-jdbc"
-    implementation "org.flywaydb:flyway-core"
+    implementation "org.flywaydb:flyway-core:${revFlyway}"
+    implementation "org.flywaydb:flyway-database-postgresql:${revFlyway}"
 
     testImplementation "org.apache.groovy:groovy-all:${revGroovy}"
-
     testImplementation project(':conductor-server')
-    testImplementation project(':conductor-client')
     testImplementation project(':conductor-grpc-client')
     testImplementation project(':conductor-es7-persistence')
 
     testImplementation "org.testcontainers:postgresql:${revTestContainer}"
+    implementation "org.conductoross:conductor-client:${revConductorClient}"
     testImplementation "org.testcontainers:elasticsearch:${revTestContainer}"
 
     testImplementation project(':conductor-test-util').sourceSets.test.output
