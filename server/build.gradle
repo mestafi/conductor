@@ -76,7 +76,6 @@ dependencies {
     }
 
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${revSpringDoc}"
-    runtimeOnly group: 'com.netflix.conductor', name: 'conductor-postgres-persistence', version: '3.15.0'
 
     implementation "com.netflix.spectator:spectator-reg-metrics3:${version_spectator}"
 
