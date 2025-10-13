@@ -29,9 +29,8 @@ jobs:
       AWS_ROLE: ${{ steps.vars.outputs.AWS_ROLE }}
       ENV: ${{ steps.vars.outputs.ENV }}
       PROJECT_PREFIX: ${{ steps.vars.outputs.PROJECT_PREFIX }}
-      ECS_CLUSTER: ${{ steps.set_env.outputs.ECS_CLUSTER }}
       ECR_REPOSITORY: ${{ steps.set_env.outputs.ECR_REPOSITORY }}
-      ENVIRONMENT_BUCKET: ${{ steps.set_env.outputs.ENVIRONMENT_BUCKET }}
+      ENVIRONMENT_BUCKET: ${{ steps.vars.outputs.ENVIRONMENT_BUCKET }}
       DEFAULT_CONF: ${{ steps.vars.outputs.DEFAULT_CONF }}
       SLACK_WEBHOOK_URL: ${{ steps.vars.outputs.SLACK_WEBHOOK_URL }}
 
@@ -64,19 +63,22 @@ jobs:
           if [[ $ENV == 'prd' && $BRANCH == 'production' ]]
           then
             echo "AWS_ROLE=PRD_AWS_ROLE" >> $GITHUB_OUTPUT
-            echo "PROJECT_PREFIX=mesta-prd-mb" >> $GITHUB_OUTPUT
+            echo "PROJECT_PREFIX=mesta-prd-nv" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_BUCKET=mesta-prd-nv-environment" >> $GITHUB_OUTPUT
             echo "DEFAULT_CONF=default-prd.conf" >> $GITHUB_OUTPUT
             echo "SLACK_WEBHOOK_URL=PRD_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT 
           elif [ $ENV == 'stg' ]
           then
             echo "AWS_ROLE=STG_AWS_ROLE" >> $GITHUB_OUTPUT
-            echo "PROJECT_PREFIX=mesta-stg-mb" >> $GITHUB_OUTPUT
+            echo "PROJECT_PREFIX=mesta-stg-nv" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_BUCKET=mesta-non-prod-nv-environment" >> $GITHUB_OUTPUT
             echo "DEFAULT_CONF=default-stg.conf" >> $GITHUB_OUTPUT
             echo "SLACK_WEBHOOK_URL=DEV_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT    
           elif [ $ENV == 'dev' ]
           then
             echo "AWS_ROLE=DEV_AWS_ROLE" >> $GITHUB_OUTPUT
-            echo "PROJECT_PREFIX=mesta-dev-mb" >> $GITHUB_OUTPUT
+            echo "PROJECT_PREFIX=mesta-dev-nv" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_BUCKET=mesta-non-prod-nv-environment" >> $GITHUB_OUTPUT
             echo "DEFAULT_CONF=default-dev.conf" >> $GITHUB_OUTPUT
             echo "SLACK_WEBHOOK_URL=DEV_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT
           else
@@ -90,12 +92,11 @@ jobs:
         id: set_env
         run: |
           PROJECT_PREFIX=${{ steps.vars.outputs.PROJECT_PREFIX }}
-          echo "ECR_REPOSITORY=$PROJECT_PREFIX-ecr-$SERVICE_NAME"  >> $GITHUB_OUTPUT
-          echo "ENVIRONMENT_BUCKET=$PROJECT_PREFIX-s3-environment"  >> $GITHUB_OUTPUT
+          echo "ECR_REPOSITORY=$PROJECT_PREFIX-$SERVICE_NAME"  >> $GITHUB_OUTPUT
           echo ":seedling: Branch:${GITHUB_REF#refs/heads/}" >> $GITHUB_STEP_SUMMARY
           
   # Building and Pushing Conductor UI Image to ECR
-  build-push-ui-image:
+  build-push-image:
     name: Build and Push UI Image
     runs-on: 'ubuntu-latest'
     timeout-minutes: 20
@@ -136,7 +137,7 @@ jobs:
 
       - name: Download S3 file
         run: |
-          aws s3 cp s3://${PROJECT_PREFIX}-s3-environment/conductor-ui/.env ./ui/.env
+          aws s3 cp s3://${{ env.ENVIRONMENT_BUCKET }}/conductor-ui/${{ env.ENV }}/.env ./ui/.env
 
       - name: Amazon ECR Login
         id: login-ecr
