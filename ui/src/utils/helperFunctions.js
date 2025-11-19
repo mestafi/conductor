@@ -9,7 +9,7 @@ export const useFetchForWorkflowDefinition = () => {
     workflowName,
     currentVersion,
     collapseWorkflowList,
-    isSubWorkflowShown = false,
+    isSubWorkflowShown,
   }) => {
     if (!isSubWorkflowShown) {
       return { tasks: [] };

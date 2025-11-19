@@ -32,7 +32,7 @@ export default function TaskDetails({
   const [isSubWorkflowShown, setIsSubWorkflowShown] = useState(false);
 
   const handleSubWorkflowToggle = () => {
-    setIsSubWorkflowShown(!isSubWorkflowShown);
+    setIsSubWorkflowShown(prev => !prev);
   }
   
   const handleSetLayout = (value) => {
