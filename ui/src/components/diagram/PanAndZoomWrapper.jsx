@@ -55,7 +55,7 @@ const Viewport = ({ viewportRef, children }) => {
   );
 };
 
-function PanAndZoomWrapper({ children, layout, workflowName }) {
+function PanAndZoomWrapper({ children, layout, workflowName, subWorkflowToggle }) {
   const viewportRef = useRef(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(0.75);
@@ -367,6 +367,7 @@ function PanAndZoomWrapper({ children, layout, workflowName }) {
         resetPosition={resetPosition}
         fitToScreen={fitToScreen}
         printScreen={() => printScreen(workflowName || "workflow_diagram")}
+        toggleSubWorkflow={subWorkflowToggle}
       />
       <div id="workflow-diagram-outer">
         <div

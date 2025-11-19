@@ -1,4 +1,5 @@
 import { ZoomControlsButton } from "./ZoomControlButton";
+import { AccountTree } from "@material-ui/icons";
 // import PrintOutlinedIcon from "@mui/icons-material/PrintOutlined";
 import PrintOutlinedIcon from "@material-ui/icons/PrintOutlined";
 import Home from "../../components/icons/Home";
@@ -15,6 +16,7 @@ export const ZoomControls = ({
   resetPosition,
   fitToScreen,
   printScreen,
+  toggleSubWorkflow
 }) => {
   const zoomPercent = Math.round(zoom * 100);
   const borderColor = "#ECECEC";
@@ -101,6 +103,19 @@ export const ZoomControls = ({
         tooltip="Export to image"
       >
         <PrintOutlinedIcon color={"grey"} />
+      </ZoomControlsButton>
+
+      <ZoomControlsButton
+        id="toggle-subworkflow-button"
+        style={{
+          borderLeft: `1px solid ${borderColor}`,
+        }}
+        onClick={() => {
+          toggleSubWorkflow();
+        }}
+        tooltip="Toggle subworkflows"
+      >
+        <AccountTree color={"grey"} />
       </ZoomControlsButton>
     </div>
   );

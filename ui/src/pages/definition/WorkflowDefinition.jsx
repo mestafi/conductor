@@ -124,6 +124,11 @@ export default function Workflow() {
 
   // for PanAndZoomWrapper
   const [layout, setLayout] = useState({ height: 0, width: 0 });
+  const [isSubWorkflowShown, setIsSubWorkflowShown] = useState(false);
+
+  const handleSubWorkflowToggle = () => {
+    setIsSubWorkflowShown(prev => !prev);
+  }
 
   const handleSetLayout = (value) => {
     setLayout((prevLayout) => {
@@ -389,8 +394,9 @@ export default function Workflow() {
         />
 
         {workflowDef && (
-          <PanAndZoomWrapper layout={layout} workflowName={workflowName}>
+          <PanAndZoomWrapper layout={layout} workflowName={workflowName} subWorkflowToggle={handleSubWorkflowToggle}>
             <WorkflowVisualizerJson
+              key={isSubWorkflowShown ? "subworkflow-on" : "subworkflow-off"}
               data={workflowDef}
               onClick={(e, data) => handleWorkflowNodeClick({ ref: data?.id })}
               subWorkflowFetcher={async (workflowName, version) =>
@@ -398,6 +404,7 @@ export default function Workflow() {
                   workflowName: workflowName,
                   currentVersion: version,
                   collapseWorkflowList: extractSubWorkflowNames(workflowDef),
+                  isSubWorkflowShown: isSubWorkflowShown,
                 })
               }
               handleLayoutChange={(value) => {
