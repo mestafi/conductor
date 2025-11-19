@@ -29,7 +29,12 @@ export default function TaskDetails({
   const [tabIndex, setTabIndex] = useState(0);
   // For PanAndZoomWrapper
   const [layout, setLayout] = useState({ height: 0, width: 0 });
+  const [isSubWorkflowShown, setIsSubWorkflowShown] = useState(false);
 
+  const handleSubWorkflowToggle = () => {
+    setIsSubWorkflowShown(!isSubWorkflowShown);
+  }
+  
   const handleSetLayout = (value) => {
     setLayout((prevLayout) => {
       if (
@@ -60,8 +65,10 @@ export default function TaskDetails({
             <PanAndZoomWrapper
               layout={layout}
               workflowName={execution?.workflowName}
+              subWorkflowToggle={handleSubWorkflowToggle}
             >
               <WorkflowVisualizerJson
+                key={isSubWorkflowShown ? "subworkflow-on" : "subworkflow-off"}
                 data={execution}
                 executionMode={true}
                 onClick={(e, data) => {
@@ -82,6 +89,7 @@ export default function TaskDetails({
                     collapseWorkflowList: extractSubWorkflowNames(
                       execution?.workflowDefinition
                     ),
+                    isSubWorkflowShown: isSubWorkflowShown,
                   })
                 }
                 handleLayoutChange={(value) => {

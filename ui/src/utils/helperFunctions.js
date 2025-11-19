@@ -9,7 +9,12 @@ export const useFetchForWorkflowDefinition = () => {
     workflowName,
     currentVersion,
     collapseWorkflowList,
+    isSubWorkflowShown = false,
   }) => {
+    if (!isSubWorkflowShown) {
+      return { tasks: [] };
+    }
+
     const path = new Path(
       `/metadata/workflow/${workflowName}${
         _.isNil(currentVersion) ? "" : `?version=${currentVersion}`
