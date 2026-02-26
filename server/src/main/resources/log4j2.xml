@@ -19,7 +19,9 @@
 <Configuration status="WARN">
     <Appenders>
         <Console name="CONSOLE">
-            <PatternLayout pattern="%-4r [%t] %-5p %c %x - %m%n"/>
+            <JsonTemplateLayout eventTemplateUri="classpath:ConductorJsonLayout.json">
+                <EventTemplateAdditionalField key="service" value="conductor"/>
+            </JsonTemplateLayout>
         </Console>
     </Appenders>
 
