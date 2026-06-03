@@ -40,10 +40,13 @@ dependencies {
     implementation project(':conductor-mysql-persistence')
     implementation project(':conductor-sqlite-persistence')
 
-    //Indexing (note: Elasticsearch 6 is deprecated)
-    implementation project(':conductor-es7-persistence')
-    // To use Opensearch, comment out above Elasticsearch, uncomment below Opensearch, and rebuild conductor
-    // implementation project(':conductor-os-persistence')
+    //Indexing — using OpenSearch for Conductor task/workflow search.
+    //ES7 is intentionally NOT included: both modules declare beans with the same name
+    //(`restClient`) and both mark IndexDAO as @Primary, so a misconfiguration that activates
+    //both conditions simultaneously would fail at startup. Rollback path is via
+    //conductor.indexing.type=postgres (PostgresIndexDAO, separate module, always available).
+    // implementation project(':conductor-es7-persistence')
+    implementation project(':conductor-os-persistence')
 
     implementation project(':conductor-redis-lock')
     implementation project(':conductor-redis-concurrency-limit')
