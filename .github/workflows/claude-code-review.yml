@@ -1,0 +1,33 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_sticky_comment: true
+          prompt: |
+            Review this pull request. If a CLAUDE.md or coding-guidelines.md
+            exists in the repo, review against those guidelines.
+            Focus on: correctness, security issues, REST semantics,
+            vendor-name leaks in error codes/messages, missing validation
+            on new DTO fields, structured logging, and missing tests.
+            Be concise: only comment on real issues, not style nitpicks.
