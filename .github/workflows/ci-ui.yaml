@@ -11,6 +11,9 @@ on:
           - dev
           - stg
           - prd
+          # The sandbox plane publishes rebuilt images for the security
+          # findings; it has no other publishing path into its own account.
+          - sandbox
       Tag:
         required: true
         type: string
@@ -81,6 +84,17 @@ jobs:
             echo "ENVIRONMENT_BUCKET=mesta-non-prod-nv-environment" >> $GITHUB_OUTPUT
             echo "DEFAULT_CONF=default-dev.conf" >> $GITHUB_OUTPUT
             echo "SLACK_WEBHOOK_URL=DEV_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT
+          elif [ $ENV == 'sandbox' ]
+          then
+            # No ENVIRONMENT_BUCKET: the only two values this build reads from
+            # the bucket are the listening port and the address of the server it
+            # proxies to, and on the sandbox plane both are the same in-cluster
+            # values every plane uses. The step below writes them directly
+            # instead of requiring a bucket object to exist.
+            echo "AWS_ROLE=SANDBOX_AWS_ROLE" >> $GITHUB_OUTPUT
+            echo "PROJECT_PREFIX=mesta-sandbox-nv" >> $GITHUB_OUTPUT
+            echo "DEFAULT_CONF=default-sandbox.conf" >> $GITHUB_OUTPUT
+            echo "SLACK_WEBHOOK_URL=DEV_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT
           else
             echo "Branch not configured!"
             exit 1
@@ -136,8 +150,17 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Download S3 file
+        if: env.ENV != 'sandbox'
         run: |
           aws s3 cp s3://${{ env.ENVIRONMENT_BUCKET }}/conductor-ui/${{ env.ENV }}/.env ./ui/.env
+
+      # The sandbox plane's equivalent, written here rather than fetched. These
+      # are the same two values staging's object holds; the service name is
+      # identical inside every plane's namespace.
+      - name: Write sandbox build settings
+        if: env.ENV == 'sandbox'
+        run: |
+          printf 'PORT=5000\nWF_SERVER=http://conductor-server:8080/\n' > ./ui/.env
 
       - name: Amazon ECR Login
         id: login-ecr
@@ -161,7 +184,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         with:
           context: ./ui/
-          file: ./ui/Dockerfile
+          # The sandbox plane builds on a pinned Alpine nginx; every other
+          # target keeps the shared Dockerfile and its unpinned base, unchanged.
+          file: ${{ env.ENV == 'sandbox' && './ui/Dockerfile.sandbox' || './ui/Dockerfile' }}
           push: true
           provenance: false
           platforms: linux/amd64

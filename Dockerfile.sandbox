@@ -1,0 +1,62 @@
+#
+# conductor:server - Netflix conductor server, sandbox plane only
+#
+
+# This is a copy of ./Dockerfile with one difference: the base image moves off
+# Ubuntu 20.04 ("focal"). Focal is past its ordinary support window, so the
+# fifteen critical operating-system findings the scanner reports against the
+# sandbox's server image — curl and libncurses6 among them, five of them
+# flagged as having a known exploit — have no fix available through a package
+# upgrade on that release. Ubuntu 24.04 ("noble") carries fixed versions.
+#
+# It is a separate file, rather than an argument on the shared Dockerfile, so
+# that the development, staging and production builds provably cannot change:
+# they still read ./Dockerfile, which this pull request does not touch. The
+# sandbox plane is publicly reachable and the development, staging and
+# production planes are not, which is why it moves first. Once the same base
+# move is agreed for the other three, this file should be deleted and the
+# change made in ./Dockerfile instead — two copies of a Dockerfile is a cost,
+# and it is only worth paying while the planes deliberately differ.
+#
+# What this does NOT fix: seventeen of the server's thirty-four critical
+# findings are Java dependencies inside the built jar (netty, tomcat-embed),
+# not operating-system packages. No base image change can reach them; they
+# need dependency upgrades in the Gradle build, which is a separate piece of
+# work with its own compatibility risk.
+
+# ===========================================================================================================
+# 0. Builder stage
+# ===========================================================================================================
+FROM eclipse-temurin:17-jdk-noble AS builder
+
+LABEL maintainer="Netflix OSS <conductor@netflix.com>"
+
+# Copy the project directly onto the image
+COPY . /conductor
+WORKDIR /conductor
+
+# Build the server on run
+RUN ./gradlew build -x test --stacktrace
+
+# ===========================================================================================================
+# 1. Bin stage
+# ===========================================================================================================
+FROM eclipse-temurin:17-jre-noble
+
+LABEL maintainer="Netflix OSS <conductor@netflix.com>"
+
+# Make app folders
+RUN mkdir -p /app/config /app/logs /app/libs
+
+# Copy the compiled output to new image
+COPY --from=builder /conductor/docker/server/bin /app
+COPY --from=builder /conductor/docker/server/config /app/config
+COPY --from=builder /conductor/server/build/libs/*boot*.jar /app/libs/conductor-server.jar
+
+# Copy the files for the server into the app folders
+RUN chmod +x /app/startup.sh
+
+HEALTHCHECK --interval=60s --timeout=30s --retries=10 CMD curl -I -XGET http://localhost:8080/health || exit 1
+
+CMD [ "/app/startup.sh" ]
+ENTRYPOINT [ "/bin/sh"]

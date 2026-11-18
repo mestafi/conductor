@@ -11,6 +11,9 @@ on:
           - dev
           - stg
           - prd
+          # The sandbox plane publishes rebuilt images for the security
+          # findings; it has no other publishing path into its own account.
+          - sandbox
       Tag:
         required: true
         type: string
@@ -77,6 +80,17 @@ jobs:
             echo "PROJECT_PREFIX=mesta-dev-nv" >> $GITHUB_OUTPUT
             echo "ENVIRONMENT_BUCKET=mesta-non-prod-nv-environment" >> $GITHUB_OUTPUT
             echo "SLACK_WEBHOOK_URL=DEV_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT
+          elif [ $ENV == 'sandbox' ]
+          then
+            # No ENVIRONMENT_BUCKET: the sandbox plane deliberately runs an image
+            # with no properties file baked in, and mounts its own
+            # conductor-sandbox.properties from a ConfigMap instead
+            # (k8s/mesta-services/conductor-server/sandbox/config-mount.yaml in
+            # the infrastructure repository). The download step below is skipped
+            # for this target rather than pointed at a bucket that need not exist.
+            echo "AWS_ROLE=SANDBOX_AWS_ROLE" >> $GITHUB_OUTPUT
+            echo "PROJECT_PREFIX=mesta-sandbox-nv" >> $GITHUB_OUTPUT
+            echo "SLACK_WEBHOOK_URL=DEV_SLACK_WEBHOOK_URL" >> $GITHUB_OUTPUT
           else
             echo "Branch not configured!"
             exit 1
@@ -125,7 +139,9 @@ jobs:
           role-to-assume: ${{ secrets[env.AWS_ROLE] }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Skipped for the sandbox plane, which mounts its properties at runtime.
       - name: Download S3 file
+        if: env.ENV != 'sandbox'
         run: |
           aws s3 cp s3://${{ env.ENVIRONMENT_BUCKET }}/conductor-server/${{ env.ENV }}/conductor-server.properties ./docker/server/config/conductor-server.properties
 
@@ -140,7 +156,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         with:
           context: .
-          file: ./Dockerfile
+          # The sandbox plane builds on Ubuntu 24.04; every other target keeps
+          # the shared Dockerfile and its Ubuntu 20.04 base, unchanged.
+          file: ${{ env.ENV == 'sandbox' && './Dockerfile.sandbox' || './Dockerfile' }}
           push: true
           provenance: false
           platforms: linux/amd64

@@ -1,0 +1,30 @@
+# conductor:ui - Conductor's web interface, sandbox plane only.
+#
+# Two differences from ./Dockerfile, which this pull request does not touch, so
+# the development, staging and production builds provably cannot change.
+#
+# First, the base is pinned. ./Dockerfile says plainly "FROM nginx", with no
+# version at all, so what gets built depends entirely on what the registry's
+# moving tag points at that day — the same source has produced different images
+# on different days, and nobody can tell from the repository which one is
+# running.
+#
+# Second, it is the Alpine variant rather than the Debian one. Every one of the
+# eighteen critical findings the scanner reports against the sandbox's current
+# web-interface image is an operating-system package, five of them flagged as
+# having a known exploit, and the two worst offenders are perl and openssl.
+# The Alpine variant does not ship perl at all and carries a far smaller
+# package set, so this is the change that actually clears them rather than
+# waiting for the Debian base to be patched.
+#
+# The interface serves static files and proxies to the server; it holds no
+# credential and runs no application code of ours, so the base swap carries
+# little behavioural risk. The one thing to confirm on the first build is that
+# nginx's user is still uid 101 — the plane's chart pins runAsUser to 101 and
+# mounts its cache and pid directories as emptyDirs on that assumption
+# (k8s/mesta-services/conductor-ui/sandbox/nginx-writable.yaml in the
+# infrastructure repository). If Alpine ever moves that uid, pin
+# nginx:1.29.8-trixie instead and accept the larger package set.
+FROM nginx:1.29.8-alpine3.23
+COPY default.conf /etc/nginx/conf.d/default.conf
+COPY build/ /usr/share/nginx/html
