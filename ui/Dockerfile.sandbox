@@ -9,13 +9,27 @@
 # on different days, and nobody can tell from the repository which one is
 # running.
 #
-# Second, it is the Alpine variant rather than the Debian one. Every one of the
-# eighteen critical findings the scanner reports against the sandbox's current
-# web-interface image is an operating-system package, five of them flagged as
-# having a known exploit, and the two worst offenders are perl and openssl.
-# The Alpine variant does not ship perl at all and carries a far smaller
-# package set, so this is the change that actually clears them rather than
-# waiting for the Debian base to be patched.
+# Second, it is the Alpine variant rather than the Debian one. The Debian base
+# ships perl and a far larger package set; Alpine ships neither, which is what
+# cleared the bulk of the high and medium findings the scanner had been
+# reporting against this image.
+#
+# Why the base moved again, and why packages are upgraded on top of it.
+# The first rebuild on 2026-11-19 pinned nginx:1.29.8-alpine3.23 and came back
+# with 22 critical findings, worse than the 18 it replaced — every one an
+# operating-system package, and every one with a fix already published. The
+# cause was not the choice of Alpine but the age of the base image: it was baked
+# before those patches reached the Alpine repositories. Reading the repositories
+# directly on 2026-11-19, both the 3.23 and 3.24 branches already carried fixed
+# curl 8.23.0-r0, openssl 3.5.9, zlib 1.4-r0 and brotli 1.2.1-r0, while the
+# image still held curl 8.17.0, openssl 3.5.6, zlib 1.3.2 and brotli 1.2.0.
+#
+# Moving the pin forward alone would only buy time, because any base image
+# begins ageing the day it is built. Upgrading installed packages during the
+# build closes that gap for good: the image always leaves with whatever the
+# distribution has published by build time. This costs nothing in traceability,
+# because what actually runs on the plane is pinned by content digest in the
+# infrastructure repository, not by this tag.
 #
 # The interface serves static files and proxies to the server; it holds no
 # credential and runs no application code of ours, so the base swap carries
@@ -24,7 +38,8 @@
 # mounts its cache and pid directories as emptyDirs on that assumption
 # (k8s/mesta-services/conductor-ui/sandbox/nginx-writable.yaml in the
 # infrastructure repository). If Alpine ever moves that uid, pin
-# nginx:1.29.8-trixie instead and accept the larger package set.
-FROM nginx:1.29.8-alpine3.23
+# nginx:1.31.9-trixie instead and accept the larger package set.
+FROM nginx:1.31.9-alpine3.24
+RUN apk upgrade --no-cache
 COPY default.conf /etc/nginx/conf.d/default.conf
 COPY build/ /usr/share/nginx/html
